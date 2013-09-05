@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+
+		<title>The Trials and Tribulations of WYSIWYG editors</title>
+
+		<meta name="description" content="A presentation on building lightweight WYSIWYG editors">
+		<meta name="author" content="Kerry Gallagher">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/night.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', use the PDF print sheet -->
+		<script>
+			document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+		</script>
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				
+				<section>
+					<h1>The Trials and Tribulations of WYSIWYG editors</h1>
+					<h3>By <a href="http://www.kerrygallagher.co.uk">Kerry Gallagher</a></h3>
+				</section>
+
+				<section>
+					<h2>This all begins with one attribute</h2>
+					
+					<pre>
+						<code data-trim>
+<div contenteditable="true">
+	<p>Content to edit</p>
+</div>
+					 	</code>
+					</pre>
+
+					<p>Good support: Chrome, Safari, Firefox, Opera, IE (<strong>>=5.5</strong>), iOS Safari, Opera Mobile and so on.
+				</section>
+
+				<section>
+					<h2>Meet the Range and Selection APIs</h2>
+					<p>These allow us to programmatically access information about the text a user has selected on the page. Typically you'll deal with a selection, which contains a single range (although you can have multiple).</p>
+					<pre>
+						<code data-trim>
+// Grabbing the selection
+var selection = window.getSelection();
+
+// Grabbing the range
+var range = selection.getRangeAt(0);
+
+// We can now grab some useful information via properties
+range.collapsed;
+
+range.commonAncestorContainer;
+
+range.startContainer;
+
+range.startOffset;
+
+range.endContainer;
+
+range.endOffset;
+
+// Or manipulate the range in some way with the many methods
+range.selectNode();
+
+range.setStart();
+
+range.setEnd();
+					 	</code>
+					</pre>
+				</section>
+
+				<section>
+					<h2>Working with ranges</h2>
+					<p>Ranges give us a lot of power, they can just be a little clunky to work with sometimes. Here's an example that would insert text at the cursor position:</p>
+					<pre>
+						<code data-trim>
+function insertTextAtCaret(text) {
+    var sel, range;
+    
+    sel = window.getSelection();
+    
+    if (sel.rangeCount) {
+        range = sel.getRangeAt(0);
+        range.deleteContents();
+
+        var textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+
+        // Show the selection
+        range = range.cloneRange();
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } 
+}
+					 	</code>
+					</pre>
+				</section>
+
+				<section>
+					<h2>Make way for formatting. Meet execCommand().</h2>
+					<p>
+						When used in conjunction with <code>contenteditable</code> <code>execCommand()</code> will apply formatting to the currently selected text within the focussed editable element. There's plenty of options, but beware browser inconsistencies. 
+					</p>
+					<pre>
+						<code data-trim>
+document.execCommand('bold');
+document.execCommand('italic');
+document.execCommand('undo');
+document.execCommand('redo');
+document.execCommand('strikeThrough');
+document.execCommand('insertUnorderedList');
+document.execCommand('insertOrderedList');
+document.execCommand('subscript');
+document.execCommand('superscript');
+document.execCommand('createLink', false, url); // Sometimes we need to pass some extra parameters
+document.execCommand('unlink');
+
+// Allows us freedom to 'fill the gaps' for block level elements. But, this is also inconsistent between browsers.  
+document.execCommand('formatBlock', false, 'blockquote'); 
+					 	</code>
+					</pre>
+				</section>
+
+				<section>
+					<h2>Am I sexy yet?</h2>
+					<p>
+						To know if a certain type of formatting is applied to the currently selected text you can use <code>document.queryCommandState('bold');</code> which will return a boolean to work with. 
+					</p>
+
+					<p>Great for those toolbars etc, but this gets a bit wonky with block level elements.</p>
+				</section>
+
+				<section>
+					<h2>So, what about those browser inconsistencies, huh?</h2>
+					<ul>
+						<li>Each browser has it's own way of handling the enter key</li>
+						<li>Each browser has it's own way of formatting things when using <code>execCommand()</code></li>
+						<li>Each browser 'exits' an empty list element in it's own way when pressing enter</li>
+						<li>Each browser reverts back to a default state differently when selecting all content with <code>ctrl + a</code> and pressing backspace</li>
+					</ul>
+
+					<h3>This makes things <strong>really</strong> hard</h3>
+				</section>
+
+				<section>
+					<h2>Examples</h2>
+					<p>Here's some examples of each browsers way of handling the enter key</p>
+					<pre>
+						<code data-trim>
+// Chrome
+<div>Text</div>
+
+// Firefox
+Text
+<br />
+
+// IE
+<p>Text</p>
+					 	</code>
+					</pre>
+
+				</section>
+
+				<section>
+					<h2>Workarounds</h2>
+					<p>
+						Some editors fully override the editable area. 
+					</p>
+
+					<p>
+						The problem with manually doing everything, i.e. using selections, ranges and DOM manipulation rather than using <code>document.execCommand()</code> to format text, is that the browsers undo / redo stack will be rendered useless. You could roll your own, of course, but this is quite tricky to do.
+					</p>
+				</section>
+
+				<section>
+					<h2>There is hope (it's just in the future)</h2>
+					<p>There is a <a href="https://dvcs.w3.org/hg/undomanager/raw-file/tip/undomanager.html">spec</a> for a proper, custom undo / redo API. Some parts are already in Webkit and Firefox.</p>
+					<p>IE11 already has <code>ms-beginUndoUnit</code> and <code>ms-endUndoUnit</code></p>
+					<p><a href="http://msdn.microsoft.com/en-us/library/hh801227%28v=vs.85%29.aspx#BeginUndoUnit">"Starts an undo unit. Any DOM changes between ms-beginUndoUnit and ms-endUndoUnit (including any changes from script) are collected into an undo unit and undone and redone as if they were a single command."</a></p>
+					<small> Sorry about the now though</small>
+				</section>
+
+				<section>
+					<h2>Pasting content</h2>
+					<p>By default content will be pasted in with some sad panda HTML and inline styles. Unless you are truly pasting plain text.</p>
+					<p>We can always listen out for the paste event like so:</p>
+					<pre>
+						<code data-trim>
+element.addEventListener('paste', handlePaste);
+					 	</code>
+					</pre>
+				</section>
+
+				<section>
+					<h2>Handling the paste event</h2>
+					<p>Now we can use <code>clipboardData()</code> to access the clipboard's contents</p>
+					<pre>
+						<code data-trim>
+function handlePaste(e) {
+  if (e.clipboardData) {
+     var plainText = e.clipboardData.getData('text/plain');
+     var html = e.clipboardData.getData('text/html');
+  }
+
+  else {
+    // IE
+    if (window.clipboardData) {
+      var plainText = window.clipboardData.getData('Text');
+      var url = window.clipboardData.getData('URL');
+    }
+  }
+}
+					 	</code>
+					</pre>
+				</section>
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
