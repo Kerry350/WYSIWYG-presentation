@@ -34,7 +34,9 @@
 				
 				<section>
 					<h1>The Trials and Tribulations of WYSIWYG editors</h1>
-					<h3>By <a href="http://www.kerrygallagher.co.uk">Kerry Gallagher</a></h3>
+					<h3>Who: <a href="http://www.kerrygallagher.co.uk">Kerry Gallagher</a> | <a href="http://www.twitter.com/Kerry350">@Kerry350</a></h3>
+					<h4>What: Web Developer</h4>
+					<h5>Where: Currently <a href="http://www.audacious.me">Audacious</a></h5>
 				</section>
 
 				<section>
@@ -109,6 +111,24 @@ function insertTextAtCaret(text) {
         sel.removeAllRanges();
         sel.addRange(range);
     } 
+}
+					 	</code>
+					</pre>
+				</section>
+
+				<section>
+					<h2>With a little context</h2>
+					<p>The following selection would return us the following information when calling <code>window.getSelection().getRangeAt(0);</code>:</p>
+					<img src="images/range_example.png" />
+					<pre>
+						<code data-trim>
+{
+	collapsed: false // If collapsed there is no selection (highlighted text), just the cursor
+	commonAncestorContainer: span.st // Reference to a regular DOM node
+	endContainer: text // node type
+	endOffset: 113 // character offset
+	startContainer: text // node type
+	startOffset: 0 // character offset
 }
 					 	</code>
 					</pre>
